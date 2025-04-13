@@ -1,4 +1,6 @@
-Flask==2.2.3
-tensorflow-cpu==2.13.0
-numpy
-Pillow
+Flask==2.3.0  # or a later version
+tensorflow==2.11.0  # or tensorflow-cpu==2.13.0
+numpy==1.23.4
+pillow==9.2.0
+pickle5==0.0.11
+Werkzeug>=2.1.0  # Make sure the version is compatible with Flask 2.3
