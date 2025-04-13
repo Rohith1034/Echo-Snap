@@ -1,5 +1,4 @@
+tensorflow-cpu==2.13.0
 flask
-tensorflow
 numpy
-pillow
-werkzeug
+Pillow
