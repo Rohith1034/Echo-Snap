@@ -1,5 +1,5 @@
-flask
-tensorflow
-numpy
-pillow
-werkzeug
+Flask==2.2.3
+tensorflow==2.11.0  # Adjust version based on your environment
+numpy==1.23.4
+pillow==9.2.0
+pickle5==0.0.11  # Needed for compatibility with pickle files in your code

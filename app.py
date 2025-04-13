@@ -6,20 +6,17 @@ from tensorflow.keras.preprocessing import image
 import pickle
 import os
 from flask import Flask, request, jsonify
+from tensorflow.keras import backend as K
 
-# Load VGG16 model (outputs 4096-dimensional features)
-base_model = VGG16(weights="imagenet")
-cnn_model = Model(inputs=base_model.input, outputs=base_model.get_layer("fc2").output)
+# Constants
+MAX_LENGTH = 34
 
-# Load trained image captioning model
-caption_model = load_model("image_caption_model.h5")
-
-# Load tokenizer used for training
+# Load tokenizer once
 with open("tokenizer.pkl", "rb") as handle:
     tokenizer = pickle.load(handle)
 
-# Maximum caption length used during training
-MAX_LENGTH = 34
+# Initialize Flask
+app = Flask(__name__)
 
 
 def preprocess_image(img_path):
@@ -31,24 +28,28 @@ def preprocess_image(img_path):
     return img_array
 
 
-def extract_features(img_path):
-    """Extracts features from an image using VGG16."""
-    img = preprocess_image(img_path)
-    features = cnn_model.predict(img)
-    return features
+def get_cnn_model():
+    """Load VGG16 model that outputs 4096-dimensional features."""
+    base_model = VGG16(weights="imagenet")
+    return Model(inputs=base_model.input, outputs=base_model.get_layer("fc2").output)
 
 
-def generate_caption(image_features):
-    """Generate a caption for an image using the trained model."""
+@tf.function
+def extract_features(img_array, cnn_model):
+    """Extracts features using VGG16."""
+    return cnn_model(img_array, training=False)
+
+
+def generate_caption(image_features, caption_model):
+    """Generate caption using the trained model."""
     start_seq = "<start>"
     for _ in range(MAX_LENGTH):
         seq = tokenizer.texts_to_sequences([start_seq])[0]
         seq = tf.keras.preprocessing.sequence.pad_sequences([seq], maxlen=MAX_LENGTH)
 
-        # Predict the next word
-        pred = caption_model.predict([image_features, seq])
+        pred = caption_model.predict([image_features, seq], verbose=0)
         word_index = np.argmax(pred)
-        word = next((word for word, index in tokenizer.word_index.items() if index == word_index), None)
+        word = next((w for w, idx in tokenizer.word_index.items() if idx == word_index), None)
 
         if word is None or word == "<end>":
             break
@@ -58,13 +59,8 @@ def generate_caption(image_features):
     return start_seq.replace("<start>", "").strip()
 
 
-# Initialize Flask API
-app = Flask(__name__)
-
-
 @app.route("/generate_caption", methods=["POST"])
 def generate_caption_api():
-    """API Endpoint to generate image captions."""
     if "image" not in request.files:
         return jsonify({"error": "No image file provided", "success": False})
 
@@ -73,16 +69,25 @@ def generate_caption_api():
     image_file.save(image_path)
 
     try:
-        # Extract features
-        image_features = extract_features(image_path)
+        # Load models on demand
+        cnn_model = get_cnn_model()
+        caption_model = load_model("image_caption_model.h5")
+
+        # Preprocess and extract features
+        img_array = preprocess_image(image_path)
+        image_features = cnn_model.predict(img_array)
 
         # Generate caption
-        caption = generate_caption(image_features)
+        caption = generate_caption(image_features, caption_model)
+
+        # Clear memory
+        K.clear_session()
+        del cnn_model, caption_model
+
         return jsonify({"caption": caption, "success": True})
     except Exception as e:
         return jsonify({"error": str(e), "success": False})
 
 
-# Run Flask app
 if __name__ == "__main__":
     app.run(debug=True)
