@@ -1,12 +1,4 @@
-<<<<<<< HEAD
 Flask==2.2.3
-tensorflow==2.11.0  # Adjust version based on your environment
-numpy==1.23.4
-pillow==9.2.0
-pickle5==0.0.11  # Needed for compatibility with pickle files in your code
-=======
 tensorflow-cpu==2.13.0
-flask
 numpy
 Pillow
->>>>>>> 0538d0298fe4799bc9a8e54f6346dbc28ac7cfc2
