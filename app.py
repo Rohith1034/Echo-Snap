@@ -93,6 +93,7 @@ def home():
     return "Hello, World!"
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 9090))
-    app.run(host="0.0.0.0", port=port)
+    port = int(os.environ.get("PORT", 8070))
+    app.run(host="0.0.0.0", port=port, debug=False, use_reloader=False)
+
 
