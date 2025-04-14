@@ -50,15 +50,8 @@ def generate_caption(image_features):
         start_seq += " " + word
     return start_seq.replace("<start>", "").strip()
 
-@app.route("/", methods=["GET"])
-def home():
-    return "Hello, world!", 200
-
-@app.route("/generate_caption", methods=["GET", "POST"])
+@app.route("/generate_caption", methods=["POST"])
 def generate_caption_api():
-    if request.method == "GET":
-        return "Send a POST request with an image to get a caption."
-
     if "image" not in request.files:
         return jsonify({"error": "No image file provided", "success": False})
     
