@@ -5,29 +5,31 @@ from tensorflow.keras.applications.vgg16 import VGG16, preprocess_input
 from tensorflow.keras.preprocessing import image
 import pickle
 import os
+import base64
+import io
+from PIL import Image
 from flask import Flask, request, jsonify
 from tensorflow.keras import backend as K
 
 # Constants
 MAX_LENGTH = 34
 
-# === Load tokenizer and models once === #
+# Load tokenizer and models globally
 with open("tokenizer.pkl", "rb") as handle:
     tokenizer = pickle.load(handle)
 
-# Load CNN model (VGG16) and trained caption model once globally
 cnn_model = Model(
     inputs=VGG16(weights="imagenet").input,
     outputs=VGG16(weights="imagenet").get_layer("fc2").output
 )
 caption_model = load_model("image_caption_model.h5")
 
-# === Initialize Flask === #
 app = Flask(__name__)
 
-def preprocess_image(img_path):
-    """Preprocess image for VGG16 model."""
-    img = image.load_img(img_path, target_size=(224, 224))
+def preprocess_image_from_bytes(img_data):
+    """Preprocess image bytes for VGG16 model."""
+    img = Image.open(io.BytesIO(img_data)).convert("RGB")
+    img = img.resize((224, 224))
     img_array = image.img_to_array(img)
     img_array = np.expand_dims(img_array, axis=0)
     return preprocess_input(img_array)
@@ -52,17 +54,18 @@ def generate_caption(image_features):
 
 @app.route("/generate_caption", methods=["POST"])
 def generate_caption_api():
-    if "image" not in request.files:
-        return jsonify({"error": "No image file provided", "success": False})
+    data = request.get_json()
 
-    image_file = request.files["image"]
-    image_path = "temp.jpg"
-    image_file.save(image_path)
+    if not data or "image_data" not in data:
+        return jsonify({"error": "Missing 'image_data' in request", "success": False})
 
     try:
-        img_array = preprocess_image(image_path)
-        image_features = cnn_model.predict(img_array)
+        # Decode base64 image
+        img_bytes = base64.b64decode(data["image_data"])
+        img_array = preprocess_image_from_bytes(img_bytes)
 
+        # Extract features and generate caption
+        image_features = cnn_model.predict(img_array)
         caption = generate_caption(image_features)
 
         return jsonify({"caption": caption, "success": True})
